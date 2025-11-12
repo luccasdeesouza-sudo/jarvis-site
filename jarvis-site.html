@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Jarvis - Sistema Completo com Chat</title>
+  <style>
+    body {
+      background-color: black;
+      color: lime;
+      font-family: Courier New, monospace;
+      text-align: center;
+      margin: 0;
+      padding-top: 100px;
+    }
+    input, button {
+      padding: 10px;
+      background: #111;
+      color: lime;
+      border: 1px solid lime;
+      font-family: Courier New, monospace;
+      margin-top: 10px;
+    }
+    .tela { display: none; }
+    #btnSair {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      background-color: lime;
+      color: black;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 25;
+    }
+    .luxBackground {
+      background: url('tonymontana.jpg') no-repeat center center fixed;
+      background-size: cover;
+    }
+    .nkoBackground {
+      background: url('metalsonic.png') no-repeat center center fixed;
+      background-size: cover;
+    }
+    #wifiStatus {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      color: lime;
+      background: rgba(0,0,0,0.6);
+      padding: 4px 8px;
+      border-radius: 8px;
+      display: none;
+      z-index: 1000;
+    }
+    #icon-buttons {
+      display: none;
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      gap: 8px;
+      z-index: 999;
+    }
+    .icon-btn {
+      background-color: #111;
+      border: 1px solid lime;
+      color: lime;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: Courier New, monospace;
+      margin-right: 5px;
+    }
+    .icon-btn:hover {
+      background-color: lime;
+      color: black;
+    }
+    #spotifyPlayer, #threeDPlayer, #chatBox {
+      display: none;
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      width: 320px;
+      height: 380px;
+      background: rgba(0,0,0,0.9);
+      border: 2px solid lime;
+      border-radius: 10px;
+      box-shadow: 0 0 15px lime;
+      z-index: 10000;
+    }
+    #threeDPlayer { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    #threeDPlayer canvas { width: 100% !important; height: 100% !important; display: block; border-radius: 8px; }
+
+    /* CHAT ESTILO JARVIS */
+    #chatMessages {
+      height: 300px;
+      overflow-y: auto;
+      text-align: left;
+      padding: 10px;
+      font-size: 14px;
+    }
+    #chatInputArea {
+      position: absolute;
+      bottom: 10px;
+      width: 90%;
+      left: 5%;
+    }
+    #chatInput {
+      width: 70%;
+      padding: 8px;
+      background: #000;
+      border: 1px solid lime;
+      color: lime;
+    }
+    #chatSend, #chatClose {
+      padding: 8px;
+      background: lime;
+      border: none;
+      color: black;
+      cursor: pointer;
+      font-weight: bold;
+      margin-left: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="wifiStatus">📶 <span id="wifiText">ON</span></div>
+
+  <div id="icon-buttons">
+    <button class="icon-btn" onclick="window.open('https://www.youtube.com', '_blank')">📺</button>
+    <button class="icon-btn" onclick="window.open('https://www.google.com', '_blank')">🔍</button>
+    <button class="icon-btn" onclick="toggleSpotify()">🎵</button>
+    <button class="icon-btn" onclick="toggleThreeD()">📀</button>
+    <button class="icon-btn" onclick="toggleChat()">💬</button>
+  </div>
+
+  <!-- Tela de escolha de perfis já inicial -->
+  <div id="telaUsuarios" class="tela" style="display:block;">
+    <h2>👤 Escolha seu perfil</h2>
+    <button onclick="escolherUsuario('lux')">lux</button>
+    <button onclick="escolherUsuario('nko')">nko</button>
+  </div>
+
+  <div id="spotifyPlayer">
+    <iframe src="https://open.spotify.com/embed/playlist/4b1S8Wb2Jl00NcXrxbfoSH" width="320" height="380" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
+  </div>
+
+  <div id="threeDPlayer"></div>
+
+  <!-- CHAT BOX -->
+  <div id="chatBox">
+    <div id="chatMessages"></div>
+    <div id="chatInputArea">
+      <input type="text" id="chatInput" placeholder="Digite sua mensagem..." />
+      <button id="chatSend">Enviar</button>
+      <button id="chatClose" onclick="toggleChat()">Fechar</button>
+    </div>
+  </div>
+
+  <div id="areaControle" class="tela">
+    <h1>🤖 Jarvis Ativado</h1>
+    <p>Bem-vindo, <span id="nomeUsuario"></span>.</p>
+    <button id="btnSair" onclick="voltarInicio()">Sair</button>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
+
+  <script>
+    // ============================
+    // 🔥 FIREBASE CONFIG 🔥
+    const firebaseConfig = {
+        apiKey: "AIzaSyBB129gUhz2B_6lMMpCtw9C4lYYVf0D8Zo",
+  authDomain: "jarvis-chat-b921c.firebaseapp.com",
+  databaseURL: "https://jarvis-chat-b921c-default-rtdb.firebaseio.com",
+  projectId: "jarvis-chat-b921c",
+  storageBucket: "jarvis-chat-b921c.appspot.com",
+  messagingSenderId: "572366073787",
+  appId: "1:572366073787:web:53c724069331f9bdbe5e9e",
+  measurementId: "G-Q0L8L2VXYJ"
+    };
+    // ============================
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let usuarioAtual = "";
+    let chatVisible = false;
+    let threeDVisible = false;
+    let renderer, scene, camera, cube, animationId;
+
+    function mostrar(telaId) {
+      document.querySelectorAll(".tela").forEach(tela => tela.style.display = "none");
+      document.getElementById(telaId).style.display = "block";
+    }
+
+    function escolherUsuario(usuario) {
+      usuarioAtual = usuario;
+      if (usuario === "lux") document.body.classList.add("luxBackground");
+      if (usuario === "nko") document.body.classList.add("nkoBackground");
+      document.getElementById("nomeUsuario").textContent = usuarioAtual;
+      mostrar("areaControle");
+      document.getElementById("icon-buttons").style.display = "flex";
+      document.getElementById("wifiStatus").style.display = "block";
+      carregarMensagens();
+    }
+
+    function voltarInicio() {
+      usuarioAtual = "";
+      document.body.classList.remove("luxBackground", "nkoBackground");
+      document.getElementById("icon-buttons").style.display = "none";
+      document.getElementById("wifiStatus").style.display = "none";
+      document.getElementById("spotifyPlayer").style.display = "none";
+      hideThreeD();
+      toggleChat(false);
+      mostrar("telaUsuarios");
+    }
+
+    function atualizarStatusWifi() {
+      const status = navigator.onLine ? "ON" : "OFF";
+      document.getElementById("wifiText").textContent = status;
+      document.getElementById("wifiStatus").style.color = status === "ON" ? "lime" : "red";
+    }
+
+    function toggleSpotify() {
+      const el = document.getElementById("spotifyPlayer");
+      el.style.display = el.style.display === "block" ? "none" : "block";
+    }
+
+    // ----- 3D -----
+    function initThreeD() {
+      const container = document.getElementById("threeDPlayer");
+      container.innerHTML = "";
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(320, 380);
+      container.appendChild(renderer.domElement);
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, 320/380, 0.1, 1000);
+      camera.position.z = 5;
+      const geometry = new THREE.BoxGeometry();
+      const material = new THREE.MeshNormalMaterial();
+      cube = new THREE.Mesh(geometry, material);
+      scene.add(cube);
+      animateThreeD();
+    }
+
+    function animateThreeD() {
+      animationId = requestAnimationFrame(animateThreeD);
+      cube.rotation.x += 0.01;
+      cube.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    }
+
+    function toggleThreeD() {
+      const container = document.getElementById("threeDPlayer");
+      if (threeDVisible) hideThreeD();
+      else {
+        container.style.display = "block";
+        threeDVisible = true;
+        if (!renderer) initThreeD();
+      }
+    }
+
+    function hideThreeD() {
+      const container = document.getElementById("threeDPlayer");
+      container.style.display = "none";
+      threeDVisible = false;
+      if (animationId) cancelAnimationFrame(animationId);
+      renderer = null;
+    }
+
+    // ----- CHAT -----
+    function toggleChat(forceClose = null) {
+      const box = document.getElementById("chatBox");
+      if (forceClose === false) { box.style.display = "none"; chatVisible = false; return; }
+      chatVisible = !chatVisible;
+      box.style.display = chatVisible ? "block" : "none";
+      if (chatVisible) carregarMensagens();
+    }
+
+    function carregarMensagens() {
+      const chatRef = db.ref("mensagens");
+      chatRef.off();
+      chatRef.on("value", snapshot => {
+        const messagesDiv = document.getElementById("chatMessages");
+        messagesDiv.innerHTML = "";
+        snapshot.forEach(msg => {
+          const data = msg.val();
+          const p = document.createElement("p");
+          p.textContent = `[${data.usuario}] ${data.texto}`;
+          messagesDiv.appendChild(p);
+        });
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+    }
+
+    document.getElementById("chatSend").onclick = () => {
+      const texto = document.getElementById("chatInput").value.trim();
+      if (!texto) return;
+      const chatRef = db.ref("mensagens");
+      chatRef.push({ usuario: usuarioAtual, texto });
+      document.getElementById("chatInput").value = "";
+    };
+
+    window.addEventListener("load", atualizarStatusWifi);
+    window.addEventListener("online", atualizarStatusWifi);
+    window.addEventListener("offline", atualizarStatusWifi);
+  </script>
+</body>
+</html>
