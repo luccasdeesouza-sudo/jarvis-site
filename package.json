@@ -1,8 +1,8 @@
-
 {
   "name": "magnux-ai",
   "version": "1.0.0",
-  "description": "Servidor de IA do Magnux",
+  "private": true,
+  "description": "Magnux OS com chat de IA via Gemini API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
